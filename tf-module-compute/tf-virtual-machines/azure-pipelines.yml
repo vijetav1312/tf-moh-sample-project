@@ -2,7 +2,7 @@ trigger:
 - feature/tf-config
 
 pool:
- vmImage: 'ubuntu-latest'
+ vmImage: 'local'
 
 variables:
   subscription: Azure subscription 1(aa322ed9-34aa-4a21-b204-1e4ce6cf2fb2)
