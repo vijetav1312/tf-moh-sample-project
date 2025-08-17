@@ -1,0 +1,22 @@
+trigger:
+- feature/tf-config
+
+pool:
+ vmImage: 'ubuntu-latest'
+
+variables:
+  subscription: Azure subscription 1(aa322ed9-34aa-4a21-b204-1e4ce6cf2fb2)
+  resourceGroup: rg-tfstate
+  storageAccount: tfstateaccount
+  container: tfstate
+  tfstateFile: terraform.tfstate
+  anyIfChange: false
+
+steps:
+
+- task: TerraformInstaller@0
+  displayName: install terraform
+  inputs:
+      terraformVersion: '0.12.26'
+
+
