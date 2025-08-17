@@ -2,15 +2,15 @@ trigger:
 - feature/tf-config
 
 pool:
- vmImage: 'local'
+ vmImage: 'ubuntu-latest'
 
 variables:
   subscription: Azure subscription 1(aa322ed9-34aa-4a21-b204-1e4ce6cf2fb2)
   resourceGroup: rg-tfstate
-  storageAccount: tfstateaccount
+  storageAccount: mohtfstateaccount
   container: tfstate
   tfstateFile: terraform.tfstate
-  anyIfChange: false
+  anyTfChange: false
 
 steps:
 
@@ -19,4 +19,51 @@ steps:
   inputs:
       terraformVersion: '0.12.26'
 
+- task: TerraformTask@5
+  inputs:
+    provider: 'azurerm'
+    command: 'init'
+    backendServiceArm: 'Azure subscription 1(1)(aa322ed9-34aa-4a21-b204-1e4ce6cf2fb2)'
+    workingDirectory: $(System.DefaultWorkingDirectory)/tf-module-compute/tf-virtual-machines/terraform-scripts
+    backendAzureRmResourceGroupName: '$(resourceGroup)'
+    backendAzureRmStorageAccountName: '$(storageAccount)'
+    backendAzureRmContainerName: '$(container)'
+    backendAzureRmKey: '$(tfstateFile)'
 
+
+- task: TerraformTask@5
+  displayName: terraform plan -out=tfplan
+  inputs:
+    provider: 'azurerm'
+    command: 'plan'
+    workingDirectory:  $(System.DefaultWorkingDirectory)/tf-module-compute/tf-virtual-machines/terraform-scripts
+    commandOptions: -out=tfplan
+    environmentServiceNameAzureRM: 'Azure subscription 1(1)(aa322ed9-34aa-4a21-b204-1e4ce6cf2fb2)'
+
+
+- task: TerraformTask@5
+  displayName: terraform apply tfplan
+  condition: eq(variable.anyIfChange, true)
+  inputs:
+    provider: 'azurerm'
+    command: 'apply'
+    workingDirectory:  $(System.DefaultWorkingDirectory)/tf-module-compute/tf-virtual-machines/terraform-scripts
+    commandOptions: 'tfplan'
+    environmentServiceNameAzureRM: 'Azure subscription 1(1)(aa322ed9-34aa-4a21-b204-1e4ce6cf2fb2)'
+
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      Write-Host "LASTEXITCODE  : $LASTEXITCODE"
+      $plan = $(terraform show -json tfplan | convertFrom-Json)
+      $actions = $plan.resource_changes.change.actions
+      Write-Host "Terraform actions : $actions"
+      if(($actions -contains 'create') -or ($actions -contains 'delete') -or ($actions -contains 'update) ){
+        Write-Host "##vso[task.setvariable variable=anyTfChange;]true;
+      }
+      else
+      {
+        Write-Host "There is no change detected in tf plan file"
+      }
